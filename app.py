@@ -24,11 +24,16 @@ def apply_kahoot_theme():
     }
     
     h1, h2, h3, h4, h5, h6, p, span, div {
-        color: white ;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif ;
+        color: white;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     }
     
-    /* 入力カード内の文字は黒 */
+    /* ★追加：白い箱の中の文字を『絶対に』黒にする最強のクラス */
+    .force-black, .force-black p, .force-black span, .force-black div, .force-black h1, .force-black h2, .force-black h3 {
+        color: black !important;
+    }
+    
+    /* 入力カード内の文字 */
     [data-testid="stTextInput"] div, [data-testid="stTextInput"] p, [data-testid="stTextInput"] label {
         color: black !important;
         text-align: center !important;
@@ -201,15 +206,15 @@ elif st.session_state.current_page == "player":
                 remaining = max(0, current_q['time'] - int(elapsed))
                 
                 st.markdown(f"""
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <div style="background-color: white; color: black !important; border-radius: 50%; width: 40px; height: 40px; line-height: 40px; text-align: center; font-weight: bold; font-size: 20px;">{q_index + 1}</div>
-                    <div style="background-color: white; color: black !important; padding: 5px 20px; border-radius: 20px; font-weight: bold;">🔠 クイズ</div>
+                <div class="force-black" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div style="background-color: white; border-radius: 50%; width: 40px; height: 40px; line-height: 40px; text-align: center; font-weight: bold; font-size: 20px;">{q_index + 1}</div>
+                    <div style="background-color: white; padding: 5px 20px; border-radius: 20px; font-weight: bold;">🔠 クイズ</div>
                     <div style="width: 40px;"></div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # ★修正：問題文の文字を強制黒に
-                st.markdown(f"<div style='background-color:white; color:black !important; padding:20px; border-radius:8px; text-align:center; font-size:24px; font-weight:bold; margin-bottom: 20px;'>{current_q['q']}</div>", unsafe_allow_html=True)
+                # ★修正：force-blackクラスを付与
+                st.markdown(f"<div class='force-black' style='background-color:white; padding:20px; border-radius:8px; text-align:center; font-size:24px; font-weight:bold; margin-bottom: 20px;'>{current_q['q']}</div>", unsafe_allow_html=True)
                 
                 answered = state.get("current_answers", {}).get(nickname)
                 if answered:
@@ -308,10 +313,13 @@ elif st.session_state.current_page == "lobby":
         base_url = "https://あなたのアプリのURL.streamlit.app" 
         join_url = f"{base_url}/?pin={pin.replace(' ', '')}"
         
-        # QRコードを生成
-        qr = qrcode.make(join_url)
+        # ★修正：QRコードの「白い余白」を最小限にして巨大化
+        qr_obj = qrcode.QRCode(border=1)
+        qr_obj.add_data(join_url)
+        qr_obj.make(fit=True)
+        img = qr_obj.make_image(fill_color="black", back_color="white")
         buffered = io.BytesIO()
-        qr.save(buffered, format="PNG")
+        img.save(buffered, format="PNG")
         qr_base64 = base64.b64encode(buffered.getvalue()).decode()
         
         state = {
@@ -326,18 +334,18 @@ elif st.session_state.current_page == "lobby":
         state = load_json(STATE_FILE, {})
         qr_base64 = state.get("qr_base64", "")
         
-        # ★修正：文字色を強制黒に（color: black !important;）、QRを巨大化（width="250"）
+        # ★修正：force-blackクラスを付与し、画像サイズを250pxに
         st.markdown(f"""
-        <div style="background-color: white; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; margin-bottom: 50px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-            <div style="text-align: left; font-weight: bold; font-size: 24px; line-height: 1.4; color: black !important;">
+        <div class="force-black" style="background-color: white; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; margin-bottom: 50px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+            <div style="text-align: left; font-weight: bold; font-size: 24px; line-height: 1.4;">
                 画面に表示されているURLで参加する<br>または QRコードでも
             </div>
             <div style="text-align: center; border-left: 3px solid #ccc; border-right: 3px solid #ccc; padding: 0 40px;">
-                <div style="font-size: 20px; font-weight: bold; color: black !important;">ゲームのPIN :</div>
-                <div style="font-size: 90px; font-weight: 900; line-height: 1; letter-spacing: 2px; color: black !important;">{state.get('pin')}</div>
+                <div style="font-size: 20px; font-weight: bold;">ゲームのPIN :</div>
+                <div style="font-size: 90px; font-weight: 900; line-height: 1; letter-spacing: 2px;">{state.get('pin')}</div>
             </div>
             <div>
-                <img src="data:image/png;base64,{qr_base64}" width="250">
+                <img src="data:image/png;base64,{qr_base64}" width="250" style="display:block;">
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -379,8 +387,8 @@ elif st.session_state.current_page == "host":
     current_q = quiz_data[q_index]
 
     if status == "question":
-        # ★修正：問題文の文字を強制黒に
-        st.markdown(f"<div style='background-color:white; color:black !important; padding:20px; border-radius:8px; text-align:center; font-size:40px; font-weight:bold; margin-bottom: 20px;'>{current_q['q']}</div>", unsafe_allow_html=True)
+        # ★修正：force-blackクラスを付与
+        st.markdown(f"<div class='force-black' style='background-color:white; padding:20px; border-radius:8px; text-align:center; font-size:40px; font-weight:bold; margin-bottom: 20px;'>{current_q['q']}</div>", unsafe_allow_html=True)
         
         if "start_time" not in state:
             state["start_time"] = time.time()
