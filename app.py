@@ -12,30 +12,27 @@ from streamlit_autorefresh import st_autorefresh
 # ==========================================
 st.set_page_config(page_title="自作Kahoot", layout="centered")
 
-# ★ここでKahoot風のCSSデザインを当てています！
 def apply_kahoot_theme():
     st.markdown("""
     <style>
-    /* 全体の背景をあの紫のグラデーションに！ */
+    /* 全体の背景を紫のグラデーションに */
     [data-testid="stAppViewContainer"] {
         background-color: #46178f !important;
         background-image: linear-gradient(180deg, #46178f 0%, #321066 100%) !important;
     }
     
-    /* 基本の文字色を白、太字、中央揃えに */
     h1, h2, h3, h4, h5, h6, p, span, div {
         color: white ;
         font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif ;
     }
     
-    /* 入力カード内の文字だけは黒にする */
+    /* 入力カード内の文字は黒 */
     [data-testid="stTextInput"] div, [data-testid="stTextInput"] p, [data-testid="stTextInput"] label {
         color: black !important;
         text-align: center !important;
         font-weight: bold !important;
     }
 
-    /* PINや名前入力のエリアを「白いカード」風にする */
     [data-testid="stTextInput"] {
         background-color: white !important;
         padding: 20px 20px 0px 20px !important;
@@ -55,63 +52,61 @@ def apply_kahoot_theme():
         margin-bottom: 20px !important;
     }
 
-    /* 「参加」「OK、次へ！」などの黒いボタン */
+    /* ボタンの基本スタイル（クイズの選択肢はもっとデカくする） */
     .stButton > button {
         background-color: #333333 !important;
         color: white !important;
-        font-size: 20px !important;
+        font-size: 24px !important;
         font-weight: bold !important;
-        height: 60px !important;
+        height: 80px !important;
         border: none !important;
-        border-bottom: 4px solid #000000 !important; /* ボタンの立体感 */
+        border-bottom: 4px solid #000000 !important; 
         border-radius: 4px !important;
         width: 100% !important;
         transition: 0.1s !important;
     }
-    /* ボタンを押したときのへこむ動き */
     .stButton > button:active {
         transform: translateY(4px) !important;
         border-bottom: 0px !important;
     }
     
-    /* テキストを中央寄せ */
-    .stMarkdown {
-        text-align: center !important;
-    }
+    /* ★クイズ選択肢の色分け（左列：赤・黄 / 右列：青・緑） */
+    [data-testid="column"]:nth-of-type(1) div[data-testid="stButton"]:nth-of-type(1) button { background-color: #e21b3c !important; border-bottom-color: #c01733 !important; }
+    [data-testid="column"]:nth-of-type(1) div[data-testid="stButton"]:nth-of-type(2) button { background-color: #d89e00 !important; border-bottom-color: #b08200 !important; }
+    [data-testid="column"]:nth-of-type(2) div[data-testid="stButton"]:nth-of-type(1) button { background-color: #1368ce !important; border-bottom-color: #1059b0 !important; }
+    [data-testid="column"]:nth-of-type(2) div[data-testid="stButton"]:nth-of-type(2) button { background-color: #26890c !important; border-bottom-color: #20750a !important; }
 
-    /* 邪魔な上のヘッダーを透明に */
-    [data-testid="stHeader"] {
-        background-color: transparent !important;
-    }
+    .stMarkdown { text-align: center !important; }
+    [data-testid="stHeader"] { background-color: transparent !important; }
     
-    /* サイドバー（ホスト用）の背景は白にして見やすく */
-    [data-testid="stSidebar"] {
-        background-color: #f0f0f0 !important;
-    }
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
-        color: black !important;
-    }
+    [data-testid="stSidebar"] { background-color: #f0f0f0 !important; }
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] div, [data-testid="stSidebar"] span { color: black !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# CSSを適用
 apply_kahoot_theme()
 
 QUIZ_FILE = "quizzes.json"
 STATE_FILE = "game_state.json"
 
 def load_json(filepath, default_data):
-    if not os.path.exists(filepath):
-        return default_data
+    if not os.path.exists(filepath): return default_data
     with open(filepath, "r", encoding="utf-8") as f:
-        try:
-            return json.load(f)
-        except:
-            return default_data
+        try: return json.load(f)
+        except: return default_data
 
 def save_json(filepath, data):
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+# 解答送信用の共通関数
+def submit_answer(nickname, choice_idx, state):
+    time_taken = time.time() - state.get("start_time", time.time())
+    if "current_answers" not in state:
+        state["current_answers"] = {}
+    state["current_answers"][nickname] = {"choice": choice_idx, "time": time_taken}
+    save_json(STATE_FILE, state)
+    st.rerun()
 
 # ==========================================
 # 2. 画面切り替えのルーティング
@@ -147,14 +142,12 @@ if st.session_state.current_page in ["lobby", "maker", "host"]:
 # ------------------------------------------
 if st.session_state.current_page == "home":
     st.markdown("<h1 style='font-size: 50px; font-weight: 900; margin-bottom: 40px;'>Kahoot!</h1>", unsafe_allow_html=True)
-    
     pin_input = st.text_input("PIN", placeholder="PINを入力")
     if st.button("参加", type="primary", use_container_width=True):
         if pin_input:
             st.session_state.entered_pin = pin_input
             st.session_state.current_page = "player"
             st.rerun()
-            
     st.divider()
     with st.expander("ホスト（主催者）用メニューはこちら"):
         if st.button("🎪 開催・問題作成を開く"):
@@ -165,9 +158,7 @@ if st.session_state.current_page == "home":
 # ① プレイヤー画面（スマホ用）
 # ------------------------------------------
 elif st.session_state.current_page == "player":
-    st.markdown("<h1 style='font-size: 40px; font-weight: 900; margin-bottom: 20px;'>Kahoot!</h1>", unsafe_allow_html=True)
     state = load_json(STATE_FILE, {})
-    
     current_pin = state.get("pin", "")
     entered_pin = st.session_state.get("entered_pin", "")
     
@@ -178,11 +169,11 @@ elif st.session_state.current_page == "player":
             st.rerun()
     else:
         if "nickname" not in st.session_state:
+            st.markdown("<h1 style='font-size: 40px; font-weight: 900; margin-bottom: 20px;'>Kahoot!</h1>", unsafe_allow_html=True)
             nickname = st.text_input("ニックネーム", placeholder="ニックネームを入力")
             if st.button("OK、次へ！", type="primary"):
                 if nickname:
-                    if "players" not in state:
-                        state["players"] = {}
+                    if "players" not in state: state["players"] = {}
                     state["players"][nickname] = {"score": 0}
                     save_json(STATE_FILE, state)
                     st.session_state.nickname = nickname
@@ -194,56 +185,75 @@ elif st.session_state.current_page == "player":
             status = state.get("status", "lobby")
             nickname = st.session_state.nickname
 
+            # ----- 待機中 -----
             if status == "lobby":
                 st.markdown("<h2 style='font-size:60px;'>🌞</h2>", unsafe_allow_html=True)
                 st.markdown(f"<h2>{nickname}</h2>", unsafe_allow_html=True)
                 st.markdown("<p style='font-size:20px;'>参加しました！画面にニックネームが表示されていますか？</p>", unsafe_allow_html=True)
 
+            # ----- クイズ出題中 -----
             elif status == "question":
-                st.markdown("<h2 style='font-size:40px;'>準備はいい？</h2>", unsafe_allow_html=True)
-                st.markdown("<p>読み込み中です...</p>", unsafe_allow_html=True)
-                
-                # 選択肢をスクショのように文字付きで表示
                 q_index = state.get("current_q_index", 0)
                 quizzes = load_json(QUIZ_FILE, {})
                 quiz_title = state.get("quiz_title")
                 current_q = quizzes.get(quiz_title, [])[q_index]
                 
-                col1, col2 = st.columns(2)
-                # スクショのように色と選択肢の文字を表示
-                choices = [
-                    f"🟥 {current_q['opts'][0]}", 
-                    f"🟦 {current_q['opts'][1]}", 
-                    f"🟨 {current_q['opts'][2]}", 
-                    f"🟩 {current_q['opts'][3]}"
-                ]
+                # スマホ側の残り時間計算
+                elapsed = time.time() - state.get("start_time", time.time())
+                remaining = max(0, current_q['time'] - int(elapsed))
+                
+                # 上部のバッジ表示
+                st.markdown(f"""
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div style="background-color: white; color: black; border-radius: 50%; width: 40px; height: 40px; line-height: 40px; text-align: center; font-weight: bold; font-size: 20px;">{q_index + 1}</div>
+                    <div style="background-color: white; color: black; padding: 5px 20px; border-radius: 20px; font-weight: bold;">🔠 クイズ</div>
+                    <div style="width: 40px;"></div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # 問題文（白いカード）
+                st.markdown(f"<div style='background-color:white; color:black; padding:20px; border-radius:8px; text-align:center; font-size:24px; font-weight:bold; margin-bottom: 20px;'>{current_q['q']}</div>", unsafe_allow_html=True)
                 
                 answered = state.get("current_answers", {}).get(nickname)
                 if answered:
-                    st.markdown("<h2>回答を送信しました！</h2>", unsafe_allow_html=True)
+                    st.markdown("<h2 style='margin-top: 50px;'>回答を送信しました！</h2>", unsafe_allow_html=True)
                 else:
-                    for i, choice in enumerate(choices):
-                        target_col = col1 if i % 2 == 0 else col2
-                        if target_col.button(choice, use_container_width=True, key=f"btn_{i}"):
-                            time_taken = time.time() - state.get("start_time", time.time())
-                            if "current_answers" not in state:
-                                state["current_answers"] = {}
-                            state["current_answers"][nickname] = {"choice": i, "time": time_taken}
-                            save_json(STATE_FILE, state)
-                            st.rerun()
-                
-                st.markdown(f"<div style='margin-top: 30px; text-align:left;'>🌞 {nickname}</div>", unsafe_allow_html=True)
+                    # 4つの選択肢ボタン（CSSで色が自動的につきます）
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button(current_q['opts'][0], key="btn_0", use_container_width=True):
+                            submit_answer(nickname, 0, state)
+                        if st.button(current_q['opts'][2], key="btn_2", use_container_width=True):
+                            submit_answer(nickname, 2, state)
+                    with col2:
+                        if st.button(current_q['opts'][1], key="btn_1", use_container_width=True):
+                            submit_answer(nickname, 1, state)
+                        if st.button(current_q['opts'][3], key="btn_3", use_container_width=True):
+                            submit_answer(nickname, 3, state)
 
+                # 下部のスコアとタイマー
+                score = state.get('players', {}).get(nickname, {}).get('score', 0)
+                st.markdown(f"""
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px;">
+                    <div style="display: flex; align-items: center;">
+                        <span style="font-size: 40px; margin-right: 10px;">🌞</span>
+                        <div>
+                            <div style="font-weight: bold; font-size: 18px; text-align:left;">{nickname}</div>
+                            <div style="font-size: 14px; opacity: 0.8; text-align:left;">{score}</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 30px; font-weight: bold; line-height: 1;">{remaining}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # ----- 正解発表 -----
             elif status == "answer":
-                st.markdown("<h1 style='font-size:50px;'>正解</h1>", unsafe_allow_html=True)
-                st.markdown("<h2 style='font-size:80px;'>🙌</h2>", unsafe_allow_html=True)
-                
-                # 自分の獲得ポイントを計算して表示
-                my_ans = state.get("current_answers", {}).get(nickname, {})
                 correct_idx = state.get("correct_idx", -1)
+                my_ans = state.get("current_answers", {}).get(nickname, {})
                 
                 if my_ans.get("choice") == correct_idx:
-                    st.markdown("<h2 style='background-color:#333; padding:10px; border-radius:5px;'>+ 獲得ポイント</h2>", unsafe_allow_html=True)
+                    st.markdown("<h1 style='font-size:50px;'>正解</h1>", unsafe_allow_html=True)
+                    st.markdown("<h2 style='font-size:80px;'>🙌</h2>", unsafe_allow_html=True)
                     st.markdown("<p>あなたは表彰台に乗っています！</p>", unsafe_allow_html=True)
                 else:
                     st.markdown("<h1 style='font-size:50px; color:#e21b3c !important;'>不正解...</h1>", unsafe_allow_html=True)
@@ -297,7 +307,6 @@ elif st.session_state.current_page == "maker":
 elif st.session_state.current_page == "lobby":
     st.markdown("<h1>Kahoot! ロビー</h1>", unsafe_allow_html=True)
     quizzes = load_json(QUIZ_FILE, {})
-    
     if not quizzes:
         st.error("「問題セット作成」からクイズを作ってください。")
         st.stop()
@@ -305,12 +314,10 @@ elif st.session_state.current_page == "lobby":
     quiz_title = st.selectbox("遊ぶクイズを選ぶ", list(quizzes.keys()))
 
     if st.button("ルームを作成", type="primary"):
-        pin = str(random.randint(100, 999)) + " " + str(random.randint(100, 999)) # 本家風に空白を入れる
-        
-        # ★ ここはあなたの公開URLに書き換えてください！ ★
+        pin = str(random.randint(100, 999)) + " " + str(random.randint(100, 999))
+        # ★ ここはあなたの公開URLに書き換えてください ★
         base_url = "https://あなたのアプリのURL.streamlit.app" 
         join_url = f"{base_url}/?pin={pin}"
-        
         qr = qrcode.make(join_url)
         qr.save("join_qr.png")
         
@@ -323,14 +330,12 @@ elif st.session_state.current_page == "lobby":
 
     if st.session_state.get("room_created"):
         state = load_json(STATE_FILE, {})
-        
         st.markdown(f"<h2 style='font-size:50px; background:white; color:black !important; padding:10px; border-radius:10px;'>ゲームのPIN: <br> {state.get('pin')}</h2>", unsafe_allow_html=True)
         st.image("join_qr.png", width=200)
         
         st.markdown(f"<h3>参加者を待っています... ({len(state.get('players', {}))}人)</h3>", unsafe_allow_html=True)
         st_autorefresh(interval=2000, key="lobby_refresh")
         
-        # 参加者の名前を横並びで表示
         players = list(state.get("players", {}).keys())
         st.markdown("<p style='font-size:24px; font-weight:bold;'>" + " ".join(players) + "</p>", unsafe_allow_html=True)
 
@@ -352,11 +357,10 @@ elif st.session_state.current_page == "host":
     quiz_title = state.get("quiz_title")
     q_index = state.get("current_q_index", 0)
     quiz_data = quizzes.get(quiz_title, [])
-
     current_q = quiz_data[q_index]
 
     if status == "question":
-        st.markdown(f"<h1>{current_q['q']}</h1>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color:white; color:black; padding:20px; border-radius:8px; text-align:center; font-size:40px; font-weight:bold; margin-bottom: 20px;'>{current_q['q']}</div>", unsafe_allow_html=True)
         
         if "start_time" not in state:
             state["start_time"] = time.time()
@@ -365,24 +369,26 @@ elif st.session_state.current_page == "host":
         elapsed = time.time() - state["start_time"]
         remaining = max(0, current_q['time'] - int(elapsed))
         
-        st.markdown(f"<h1 style='font-size:80px; background-color:#864cbf; border-radius:50%; width:120px; height:120px; line-height:120px; margin:0 auto;'>{remaining}</h1>", unsafe_allow_html=True)
+        st.markdown(f"<h1 style='font-size:80px; background-color:#864cbf; border-radius:50%; width:120px; height:120px; line-height:120px; text-align:center; margin:20px auto;'>{remaining}</h1>", unsafe_allow_html=True)
         
         answers_count = len(state.get("current_answers", {}))
         players_count = len(state.get("players", {}))
-        st.markdown(f"<h3 style='text-align:right;'>回答数: {answers_count}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='text-align:right;'>回答数: {answers_count} / {players_count}</h3>", unsafe_allow_html=True)
 
         col1, col2 = st.columns(2)
-        col1.error(f"🟥 {current_q['opts'][0]}")
-        col2.info(f"🟦 {current_q['opts'][1]}")
-        col1.warning(f"🟨 {current_q['opts'][2]}")
-        col2.success(f"🟩 {current_q['opts'][3]}")
+        with col1:
+            st.button(current_q['opts'][0], key="host_btn0", use_container_width=True)
+            st.button(current_q['opts'][2], key="host_btn2", use_container_width=True)
+        with col2:
+            st.button(current_q['opts'][1], key="host_btn1", use_container_width=True)
+            st.button(current_q['opts'][3], key="host_btn3", use_container_width=True)
 
-        if remaining == 0 or (answers_count == players_count and players_count > 0):
-            if st.button("次へ（正解発表）", type="primary"):
-                state["status"] = "answer"
-                state["correct_idx"] = current_q['ans']
-                save_json(STATE_FILE, state)
-                st.rerun()
+        # ★ 全員回答 or 時間切れで自動的に正解発表へ遷移！
+        if remaining <= 0 or (players_count > 0 and answers_count >= players_count):
+            state["status"] = "answer"
+            state["correct_idx"] = current_q['ans']
+            save_json(STATE_FILE, state)
+            st.rerun()
 
     elif status == "answer":
         st.markdown("<h1>正解発表！</h1>", unsafe_allow_html=True)
@@ -390,8 +396,7 @@ elif st.session_state.current_page == "host":
         
         answers = state.get("current_answers", {})
         counts = [0, 0, 0, 0]
-        for p, data in answers.items():
-            counts[data["choice"]] += 1
+        for p, data in answers.items(): counts[data["choice"]] += 1
             
         df = pd.DataFrame({"選択肢": current_q['opts'], "投票数": counts})
         st.bar_chart(df.set_index("選択肢"))
