@@ -207,7 +207,7 @@ elif st.session_state.current_page == "lobby":
         pin = str(random.randint(1000, 9999))
         
         # ★ GitHub公開後は、ここを自分のStreamlitアプリのURLに変更してください
-        base_url = "http://localhost:8501" 
+        base_url = "https://quizhistory.streamlit.app/" 
         join_url = f"{base_url}/?pin={pin}"
         
         qr = qrcode.make(join_url)
