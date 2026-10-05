@@ -117,7 +117,6 @@ def submit_answer(nickname, choice_idx, state):
 # ==========================================
 # 2. 画面切り替えのルーティング
 # ==========================================
-# URLに ?room=XXXX があればプレイヤー画面にする
 room_id = st.query_params.get("room", "")
 
 if "current_page" not in st.session_state:
@@ -145,7 +144,7 @@ if st.session_state.current_page in ["lobby", "maker", "host"]:
 # ==========================================
 
 # ------------------------------------------
-# ⓪ 初期画面（直接アクセスされた人用）
+# ⓪ 初期画面
 # ------------------------------------------
 if st.session_state.current_page == "home":
     st.markdown("<h1 style='font-size: 50px; font-weight: 900; margin-bottom: 20px;'>Kahoot!</h1>", unsafe_allow_html=True)
@@ -243,7 +242,7 @@ elif st.session_state.current_page == "player":
                     st.markdown("<h2 style='font-size:80px;'>🙌</h2>", unsafe_allow_html=True)
                     st.markdown("<p>あなたは表彰台に乗っています！</p>", unsafe_allow_html=True)
                 else:
-                    st.markdown("<h1 style='font-size:50px; color:#e21b3c !important; data-testid="stMarkdown"'>不正解...</h1>", unsafe_allow_html=True)
+                    st.markdown("<h1 style='font-size:50px; color:#e21b3c !important;'>不正解...</h1>", unsafe_allow_html=True)
                     st.markdown("<p>次は頑張ろう！</p>", unsafe_allow_html=True)
                 
             elif status == "leaderboard":
@@ -300,12 +299,11 @@ elif st.session_state.current_page == "lobby":
     quiz_title = st.selectbox("遊ぶクイズを選ぶ", list(quizzes.keys()))
 
     if st.button("ルームを作成", type="primary"):
-        room_id = str(random.randint(100000, 999999)) # ランダムなルームID
+        room_id = str(random.randint(100000, 999999))
         
         base_url = "https://quizhistory.streamlit.app" 
         join_url = f"{base_url}/?room={room_id}"
         
-        # QRコード生成
         qr_obj = qrcode.QRCode(border=1)
         qr_obj.add_data(join_url)
         qr_obj.make(fit=True)
@@ -326,7 +324,6 @@ elif st.session_state.current_page == "lobby":
         state = load_json(STATE_FILE, {})
         qr_base64 = state.get("qr_base64", "")
         
-        # PINをなくし、QRコードを大きく中央に配置するロビー画面
         st.markdown("""
         <div class="force-black" style="background-color: white; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); max-width: 500px; margin-left: auto; margin-right: auto;">
             <div style="font-weight: bold; font-size: 26px; margin-bottom: 20px;">
@@ -334,7 +331,6 @@ elif st.session_state.current_page == "lobby":
             </div>
         """, unsafe_allow_html=True)
         
-        # センターに巨大QRコードを表示
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.markdown(f'<div style="text-align: center;"><img src="data:image/png;base64,{qr_base64}" width="280" style="display:block; margin: 0 auto;"></div>', unsafe_allow_html=True)
