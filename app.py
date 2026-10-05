@@ -123,7 +123,7 @@ if "current_page" not in st.session_state:
 
 if st.session_state.current_page in ["lobby", "maker", "host"]:
     with st.sidebar:
-        st.title("⚙️️ ホストメニュー")
+        st.title("⚙ ホストメニュー")
         if st.button("🎪 ロビー（開催画面）", use_container_width=True):
             st.session_state.current_page = "lobby"
             st.rerun()
@@ -202,13 +202,14 @@ elif st.session_state.current_page == "player":
                 
                 st.markdown(f"""
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <div style="background-color: white; color: black; border-radius: 50%; width: 40px; height: 40px; line-height: 40px; text-align: center; font-weight: bold; font-size: 20px;">{q_index + 1}</div>
-                    <div style="background-color: white; color: black; padding: 5px 20px; border-radius: 20px; font-weight: bold;">🔠 クイズ</div>
+                    <div style="background-color: white; color: black !important; border-radius: 50%; width: 40px; height: 40px; line-height: 40px; text-align: center; font-weight: bold; font-size: 20px;">{q_index + 1}</div>
+                    <div style="background-color: white; color: black !important; padding: 5px 20px; border-radius: 20px; font-weight: bold;">🔠 クイズ</div>
                     <div style="width: 40px;"></div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                st.markdown(f"<div style='background-color:white; color:black; padding:20px; border-radius:8px; text-align:center; font-size:24px; font-weight:bold; margin-bottom: 20px;'>{current_q['q']}</div>", unsafe_allow_html=True)
+                # ★修正：問題文の文字を強制黒に
+                st.markdown(f"<div style='background-color:white; color:black !important; padding:20px; border-radius:8px; text-align:center; font-size:24px; font-weight:bold; margin-bottom: 20px;'>{current_q['q']}</div>", unsafe_allow_html=True)
                 
                 answered = state.get("current_answers", {}).get(nickname)
                 if answered:
@@ -302,11 +303,12 @@ elif st.session_state.current_page == "lobby":
 
     if st.button("ルームを作成", type="primary"):
         pin = str(random.randint(100, 999)) + " " + str(random.randint(100, 999))
-        # ★ ここはあなたの公開URLに書き換えてください ★
+        
+        # ★★★★★ ここをあなたのアプリのURLに書き換えてください ★★★★★
         base_url = "https://あなたのアプリのURL.streamlit.app" 
         join_url = f"{base_url}/?pin={pin.replace(' ', '')}"
         
-        # QRコードを生成してBase64画像文字列に変換（HTML埋め込み用）
+        # QRコードを生成
         qr = qrcode.make(join_url)
         buffered = io.BytesIO()
         qr.save(buffered, format="PNG")
@@ -324,26 +326,24 @@ elif st.session_state.current_page == "lobby":
         state = load_json(STATE_FILE, {})
         qr_base64 = state.get("qr_base64", "")
         
-        # 1. 画面上部の白いヘッダーバー（スクショ完全再現）
+        # ★修正：文字色を強制黒に（color: black !important;）、QRを巨大化（width="250"）
         st.markdown(f"""
-        <div style="background-color: white; color: black; display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; margin-bottom: 50px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-            <div style="text-align: left; font-weight: bold; font-size: 20px; line-height: 1.4;">
+        <div style="background-color: white; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; margin-bottom: 50px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+            <div style="text-align: left; font-weight: bold; font-size: 24px; line-height: 1.4; color: black !important;">
                 画面に表示されているURLで参加する<br>または QRコードでも
             </div>
-            <div style="text-align: center; border-left: 2px solid #ccc; border-right: 2px solid #ccc; padding: 0 40px;">
-                <div style="font-size: 18px; font-weight: bold; color: #333;">ゲームのPIN :</div>
-                <div style="font-size: 80px; font-weight: 900; line-height: 1; letter-spacing: 2px;">{state.get('pin')}</div>
+            <div style="text-align: center; border-left: 3px solid #ccc; border-right: 3px solid #ccc; padding: 0 40px;">
+                <div style="font-size: 20px; font-weight: bold; color: black !important;">ゲームのPIN :</div>
+                <div style="font-size: 90px; font-weight: 900; line-height: 1; letter-spacing: 2px; color: black !important;">{state.get('pin')}</div>
             </div>
             <div>
-                <img src="data:image/png;base64,{qr_base64}" width="150">
+                <img src="data:image/png;base64,{qr_base64}" width="250">
             </div>
         </div>
         """, unsafe_allow_html=True)
         
-        # 2. 中央のKahootロゴ
         st.markdown("<h1 style='font-size: 90px; font-weight: 900; text-align: center; margin-top: 60px; margin-bottom: 60px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);'>Kahoot!</h1>", unsafe_allow_html=True)
         
-        # 3. 待機中テキスト（透ける黒背景）
         st.markdown("""
         <div style="text-align: center; margin-bottom: 40px;">
             <span style="background-color: rgba(0,0,0,0.4); padding: 10px 30px; font-size: 24px; font-weight: bold; border-radius: 5px;">
@@ -354,7 +354,6 @@ elif st.session_state.current_page == "lobby":
         
         st_autorefresh(interval=2000, key="lobby_refresh")
         
-        # 4. 参加者の名前表示
         players = list(state.get("players", {}).keys())
         st.markdown("<p style='font-size:28px; font-weight:bold; text-align: center;'>" + "  ".join(players) + "</p>", unsafe_allow_html=True)
 
@@ -380,7 +379,8 @@ elif st.session_state.current_page == "host":
     current_q = quiz_data[q_index]
 
     if status == "question":
-        st.markdown(f"<div style='background-color:white; color:black; padding:20px; border-radius:8px; text-align:center; font-size:40px; font-weight:bold; margin-bottom: 20px;'>{current_q['q']}</div>", unsafe_allow_html=True)
+        # ★修正：問題文の文字を強制黒に
+        st.markdown(f"<div style='background-color:white; color:black !important; padding:20px; border-radius:8px; text-align:center; font-size:40px; font-weight:bold; margin-bottom: 20px;'>{current_q['q']}</div>", unsafe_allow_html=True)
         
         if "start_time" not in state:
             state["start_time"] = time.time()
