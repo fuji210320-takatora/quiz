@@ -28,7 +28,7 @@ def apply_kahoot_theme():
         font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     }
     
-    /* ★追加：白い箱の中の文字を『絶対に』黒にする最強のクラス */
+    /* 白い箱の中の文字を絶対に黒にするクラス */
     .force-black, .force-black p, .force-black span, .force-black div, .force-black h1, .force-black h2, .force-black h3 {
         color: black !important;
     }
@@ -213,7 +213,6 @@ elif st.session_state.current_page == "player":
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # ★修正：force-blackクラスを付与
                 st.markdown(f"<div class='force-black' style='background-color:white; padding:20px; border-radius:8px; text-align:center; font-size:24px; font-weight:bold; margin-bottom: 20px;'>{current_q['q']}</div>", unsafe_allow_html=True)
                 
                 answered = state.get("current_answers", {}).get(nickname)
@@ -309,11 +308,11 @@ elif st.session_state.current_page == "lobby":
     if st.button("ルームを作成", type="primary"):
         pin = str(random.randint(100, 999)) + " " + str(random.randint(100, 999))
         
-        # ★★★★★ ここをあなたのアプリのURLに書き換えてください ★★★★★
-        base_url = "https://あなたのアプリのURL.streamlit.app" 
+        # ★あなたの本番URLを設定済み！
+        base_url = "https://quizhistory.streamlit.app" 
         join_url = f"{base_url}/?pin={pin.replace(' ', '')}"
         
-        # ★修正：QRコードの「白い余白」を最小限にして巨大化
+        # QRコード生成（余白最小・巨大化）
         qr_obj = qrcode.QRCode(border=1)
         qr_obj.add_data(join_url)
         qr_obj.make(fit=True)
@@ -334,7 +333,7 @@ elif st.session_state.current_page == "lobby":
         state = load_json(STATE_FILE, {})
         qr_base64 = state.get("qr_base64", "")
         
-        # ★修正：force-blackクラスを付与し、画像サイズを250pxに
+        # ロビー画面（力づくで黒文字固定）
         st.markdown(f"""
         <div class="force-black" style="background-color: white; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; margin-bottom: 50px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
             <div style="text-align: left; font-weight: bold; font-size: 24px; line-height: 1.4;">
@@ -387,7 +386,6 @@ elif st.session_state.current_page == "host":
     current_q = quiz_data[q_index]
 
     if status == "question":
-        # ★修正：force-blackクラスを付与
         st.markdown(f"<div class='force-black' style='background-color:white; padding:20px; border-radius:8px; text-align:center; font-size:40px; font-weight:bold; margin-bottom: 20px;'>{current_q['q']}</div>", unsafe_allow_html=True)
         
         if "start_time" not in state:
