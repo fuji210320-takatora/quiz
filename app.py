@@ -117,11 +117,12 @@ def submit_answer(nickname, choice_idx, state):
 # ==========================================
 # 2. 画面切り替えのルーティング
 # ==========================================
-url_pin = st.query_params.get("pin", "")
+# URLに ?room=XXXX があればプレイヤー画面にする
+room_id = st.query_params.get("room", "")
 
 if "current_page" not in st.session_state:
-    if url_pin:
-        st.session_state.entered_pin = url_pin
+    if room_id:
+        st.session_state.room_id = room_id
         st.session_state.current_page = "player"
     else:
         st.session_state.current_page = "home" 
@@ -144,16 +145,12 @@ if st.session_state.current_page in ["lobby", "maker", "host"]:
 # ==========================================
 
 # ------------------------------------------
-# ⓪ 初期画面（PINコード入力）
+# ⓪ 初期画面（直接アクセスされた人用）
 # ------------------------------------------
 if st.session_state.current_page == "home":
-    st.markdown("<h1 style='font-size: 50px; font-weight: 900; margin-bottom: 40px;'>Kahoot!</h1>", unsafe_allow_html=True)
-    pin_input = st.text_input("PIN", placeholder="PINを入力")
-    if st.button("参加", type="primary", use_container_width=True):
-        if pin_input:
-            st.session_state.entered_pin = pin_input
-            st.session_state.current_page = "player"
-            st.rerun()
+    st.markdown("<h1 style='font-size: 50px; font-weight: 900; margin-bottom: 20px;'>Kahoot!</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 18px;'>ホストが映しているQRコードをスマホで読み込んで参加してください！</p>", unsafe_allow_html=True)
+    
     st.divider()
     with st.expander("ホスト（主催者）用メニューはこちら"):
         if st.button("🎪 開催・問題作成を開く"):
@@ -165,14 +162,11 @@ if st.session_state.current_page == "home":
 # ------------------------------------------
 elif st.session_state.current_page == "player":
     state = load_json(STATE_FILE, {})
-    current_pin = state.get("pin", "")
-    entered_pin = st.session_state.get("entered_pin", "")
+    current_room = state.get("room_id", "")
+    entered_room = st.session_state.get("room_id", "")
     
-    if not current_pin or current_pin != entered_pin:
-        st.error("PINコードが間違っています。")
-        if st.button("戻る"):
-            st.session_state.current_page = "home"
-            st.rerun()
+    if not current_room or current_room != entered_room:
+        st.error("現在開催されているゲームルームが見つからないか、終了しました。")
     else:
         if "nickname" not in st.session_state:
             st.markdown("<h1 style='font-size: 40px; font-weight: 900; margin-bottom: 20px;'>Kahoot!</h1>", unsafe_allow_html=True)
@@ -249,7 +243,7 @@ elif st.session_state.current_page == "player":
                     st.markdown("<h2 style='font-size:80px;'>🙌</h2>", unsafe_allow_html=True)
                     st.markdown("<p>あなたは表彰台に乗っています！</p>", unsafe_allow_html=True)
                 else:
-                    st.markdown("<h1 style='font-size:50px; color:#e21b3c !important;'>不正解...</h1>", unsafe_allow_html=True)
+                    st.markdown("<h1 style='font-size:50px; color:#e21b3c !important; data-testid="stMarkdown"'>不正解...</h1>", unsafe_allow_html=True)
                     st.markdown("<p>次は頑張ろう！</p>", unsafe_allow_html=True)
                 
             elif status == "leaderboard":
@@ -306,13 +300,12 @@ elif st.session_state.current_page == "lobby":
     quiz_title = st.selectbox("遊ぶクイズを選ぶ", list(quizzes.keys()))
 
     if st.button("ルームを作成", type="primary"):
-        pin = str(random.randint(100, 999)) + " " + str(random.randint(100, 999))
+        room_id = str(random.randint(100000, 999999)) # ランダムなルームID
         
-        # ★あなたの本番URLを設定済み！
         base_url = "https://quizhistory.streamlit.app" 
-        join_url = f"{base_url}/?pin={pin.replace(' ', '')}"
+        join_url = f"{base_url}/?room={room_id}"
         
-        # QRコード生成（余白最小・巨大化）
+        # QRコード生成
         qr_obj = qrcode.QRCode(border=1)
         qr_obj.add_data(join_url)
         qr_obj.make(fit=True)
@@ -322,7 +315,7 @@ elif st.session_state.current_page == "lobby":
         qr_base64 = base64.b64encode(buffered.getvalue()).decode()
         
         state = {
-            "pin": pin, "quiz_title": quiz_title, "status": "lobby",
+            "room_id": room_id, "quiz_title": quiz_title, "status": "lobby",
             "current_q_index": 0, "players": {}, "current_answers": {},
             "qr_base64": qr_base64
         }
@@ -333,26 +326,25 @@ elif st.session_state.current_page == "lobby":
         state = load_json(STATE_FILE, {})
         qr_base64 = state.get("qr_base64", "")
         
-        # ロビー画面（力づくで黒文字固定）
-        st.markdown(f"""
-        <div class="force-black" style="background-color: white; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; margin-bottom: 50px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-            <div style="text-align: left; font-weight: bold; font-size: 24px; line-height: 1.4;">
-                画面に表示されているURLで参加する<br>または QRコードでも
+        # PINをなくし、QRコードを大きく中央に配置するロビー画面
+        st.markdown("""
+        <div class="force-black" style="background-color: white; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); max-width: 500px; margin-left: auto; margin-right: auto;">
+            <div style="font-weight: bold; font-size: 26px; margin-bottom: 20px;">
+                スマホでQRコードを読み込んで参加！
             </div>
-            <div style="text-align: center; border-left: 3px solid #ccc; border-right: 3px solid #ccc; padding: 0 40px;">
-                <div style="font-size: 20px; font-weight: bold;">ゲームのPIN :</div>
-                <div style="font-size: 90px; font-weight: 900; line-height: 1; letter-spacing: 2px;">{state.get('pin')}</div>
-            </div>
-            <div>
-                <img src="data:image/png;base64,{qr_base64}" width="250" style="display:block;">
-            </div>
-        </div>
         """, unsafe_allow_html=True)
         
-        st.markdown("<h1 style='font-size: 90px; font-weight: 900; text-align: center; margin-top: 60px; margin-bottom: 60px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);'>Kahoot!</h1>", unsafe_allow_html=True)
+        # センターに巨大QRコードを表示
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown(f'<div style="text-align: center;"><img src="data:image/png;base64,{qr_base64}" width="280" style="display:block; margin: 0 auto;"></div>', unsafe_allow_html=True)
+            
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        st.markdown("<h1 style='font-size: 80px; font-weight: 900; text-align: center; margin-top: 20px; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);'>Kahoot!</h1>", unsafe_allow_html=True)
         
         st.markdown("""
-        <div style="text-align: center; margin-bottom: 40px;">
+        <div style="text-align: center; margin-bottom: 30px;">
             <span style="background-color: rgba(0,0,0,0.4); padding: 10px 30px; font-size: 24px; font-weight: bold; border-radius: 5px;">
                 参加者を待っています
             </span>
