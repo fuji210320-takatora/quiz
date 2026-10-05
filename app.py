@@ -8,9 +8,94 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 
 # ==========================================
-# 1. 裏方の設定と関数
+# 1. 裏方の設定とデザイン（CSS強制注入）
 # ==========================================
 st.set_page_config(page_title="自作Kahoot", layout="centered")
+
+# ★ここでKahoot風のCSSデザインを当てています！
+def apply_kahoot_theme():
+    st.markdown("""
+    <style>
+    /* 全体の背景をあの紫のグラデーションに！ */
+    [data-testid="stAppViewContainer"] {
+        background-color: #46178f !important;
+        background-image: linear-gradient(180deg, #46178f 0%, #321066 100%) !important;
+    }
+    
+    /* 基本の文字色を白、太字、中央揃えに */
+    h1, h2, h3, h4, h5, h6, p, span, div {
+        color: white ;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif ;
+    }
+    
+    /* 入力カード内の文字だけは黒にする */
+    [data-testid="stTextInput"] div, [data-testid="stTextInput"] p, [data-testid="stTextInput"] label {
+        color: black !important;
+        text-align: center !important;
+        font-weight: bold !important;
+    }
+
+    /* PINや名前入力のエリアを「白いカード」風にする */
+    [data-testid="stTextInput"] {
+        background-color: white !important;
+        padding: 20px 20px 0px 20px !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
+        margin-top: 20px !important;
+    }
+
+    [data-testid="stTextInput"] input {
+        text-align: center !important;
+        font-size: 24px !important;
+        font-weight: bold !important;
+        color: black !important;
+        background-color: #ffffff !important;
+        border: 2px solid #e0e0e0 !important;
+        border-radius: 4px !important;
+        margin-bottom: 20px !important;
+    }
+
+    /* 「参加」「OK、次へ！」などの黒いボタン */
+    .stButton > button {
+        background-color: #333333 !important;
+        color: white !important;
+        font-size: 20px !important;
+        font-weight: bold !important;
+        height: 60px !important;
+        border: none !important;
+        border-bottom: 4px solid #000000 !important; /* ボタンの立体感 */
+        border-radius: 4px !important;
+        width: 100% !important;
+        transition: 0.1s !important;
+    }
+    /* ボタンを押したときのへこむ動き */
+    .stButton > button:active {
+        transform: translateY(4px) !important;
+        border-bottom: 0px !important;
+    }
+    
+    /* テキストを中央寄せ */
+    .stMarkdown {
+        text-align: center !important;
+    }
+
+    /* 邪魔な上のヘッダーを透明に */
+    [data-testid="stHeader"] {
+        background-color: transparent !important;
+    }
+    
+    /* サイドバー（ホスト用）の背景は白にして見やすく */
+    [data-testid="stSidebar"] {
+        background-color: #f0f0f0 !important;
+    }
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
+        color: black !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# CSSを適用
+apply_kahoot_theme()
 
 QUIZ_FILE = "quizzes.json"
 STATE_FILE = "game_state.json"
@@ -31,7 +116,6 @@ def save_json(filepath, data):
 # ==========================================
 # 2. 画面切り替えのルーティング
 # ==========================================
-# QRコードのURL（?pin=XXXX）から来た場合の処理
 url_pin = st.query_params.get("pin", "")
 
 if "current_page" not in st.session_state:
@@ -39,9 +123,8 @@ if "current_page" not in st.session_state:
         st.session_state.entered_pin = url_pin
         st.session_state.current_page = "player"
     else:
-        st.session_state.current_page = "home" # 初期画面をPIN入力に
+        st.session_state.current_page = "home" 
 
-# ホスト用のサイドバーメニュー（ホスト関連画面の時だけ表示）
 if st.session_state.current_page in ["lobby", "maker", "host"]:
     with st.sidebar:
         st.title("⚙️ ホストメニュー")
@@ -51,7 +134,7 @@ if st.session_state.current_page in ["lobby", "maker", "host"]:
         if st.button("📝 問題セット作成", use_container_width=True):
             st.session_state.current_page = "maker"
             st.rerun()
-        if st.button("🚪 トップ（PIN入力）に戻る", use_container_width=True):
+        if st.button("🚪 トップに戻る", use_container_width=True):
             st.session_state.current_page = "home"
             st.rerun()
 
@@ -63,11 +146,10 @@ if st.session_state.current_page in ["lobby", "maker", "host"]:
 # ⓪ 初期画面（PINコード入力）
 # ------------------------------------------
 if st.session_state.current_page == "home":
-    st.title("⚡ 自作Kahootへようこそ！")
-    st.write("ホストが画面に表示しているPINコードを入力してください。")
+    st.markdown("<h1 style='font-size: 50px; font-weight: 900; margin-bottom: 40px;'>Kahoot!</h1>", unsafe_allow_html=True)
     
-    pin_input = st.text_input("PINコード", placeholder="例: 1234")
-    if st.button("参加する！", type="primary", use_container_width=True):
+    pin_input = st.text_input("PIN", placeholder="PINを入力")
+    if st.button("参加", type="primary", use_container_width=True):
         if pin_input:
             st.session_state.entered_pin = pin_input
             st.session_state.current_page = "player"
@@ -75,7 +157,7 @@ if st.session_state.current_page == "home":
             
     st.divider()
     with st.expander("ホスト（主催者）用メニューはこちら"):
-        if st.button("🎪 開催・問題作成メニューを開く"):
+        if st.button("🎪 開催・問題作成を開く"):
             st.session_state.current_page = "lobby"
             st.rerun()
 
@@ -83,23 +165,21 @@ if st.session_state.current_page == "home":
 # ① プレイヤー画面（スマホ用）
 # ------------------------------------------
 elif st.session_state.current_page == "player":
-    st.title("📱 プレイヤー画面")
+    st.markdown("<h1 style='font-size: 40px; font-weight: 900; margin-bottom: 20px;'>Kahoot!</h1>", unsafe_allow_html=True)
     state = load_json(STATE_FILE, {})
     
     current_pin = state.get("pin", "")
     entered_pin = st.session_state.get("entered_pin", "")
     
-    # PINコードの正誤チェック
     if not current_pin or current_pin != entered_pin:
-        st.error("PINコードが間違っているか、現在ゲームが開催されていません。")
+        st.error("PINコードが間違っています。")
         if st.button("戻る"):
             st.session_state.current_page = "home"
             st.rerun()
     else:
-        # ニックネーム入力
         if "nickname" not in st.session_state:
-            nickname = st.text_input("ニックネームを入力してね！")
-            if st.button("入室する", type="primary"):
+            nickname = st.text_input("ニックネーム", placeholder="ニックネームを入力")
+            if st.button("OK、次へ！", type="primary"):
                 if nickname:
                     if "players" not in state:
                         state["players"] = {}
@@ -107,27 +187,40 @@ elif st.session_state.current_page == "player":
                     save_json(STATE_FILE, state)
                     st.session_state.nickname = nickname
                     st.rerun()
-        # コントローラー画面
+            st.markdown("<p style='font-size:12px; margin-top:20px;'>本名を使用しないでください</p>", unsafe_allow_html=True)
         else:
             st_autorefresh(interval=1000, key="player_refresh")
             state = load_json(STATE_FILE, {})
             status = state.get("status", "lobby")
             nickname = st.session_state.nickname
 
-            st.write(f"👤 **{nickname}** さん")
-
             if status == "lobby":
-                st.info("ホストが開始するのを待っています...")
-                st.snow()
+                st.markdown("<h2 style='font-size:60px;'>🌞</h2>", unsafe_allow_html=True)
+                st.markdown(f"<h2>{nickname}</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='font-size:20px;'>参加しました！画面にニックネームが表示されていますか？</p>", unsafe_allow_html=True)
 
             elif status == "question":
-                st.warning("問題が出題されています！画面を見て答えてね！")
+                st.markdown("<h2 style='font-size:40px;'>準備はいい？</h2>", unsafe_allow_html=True)
+                st.markdown("<p>読み込み中です...</p>", unsafe_allow_html=True)
+                
+                # 選択肢をスクショのように文字付きで表示
+                q_index = state.get("current_q_index", 0)
+                quizzes = load_json(QUIZ_FILE, {})
+                quiz_title = state.get("quiz_title")
+                current_q = quizzes.get(quiz_title, [])[q_index]
+                
                 col1, col2 = st.columns(2)
-                choices = ["🟥", "🟦", "🟨", "🟩"]
+                # スクショのように色と選択肢の文字を表示
+                choices = [
+                    f"🟥 {current_q['opts'][0]}", 
+                    f"🟦 {current_q['opts'][1]}", 
+                    f"🟨 {current_q['opts'][2]}", 
+                    f"🟩 {current_q['opts'][3]}"
+                ]
                 
                 answered = state.get("current_answers", {}).get(nickname)
                 if answered:
-                    st.success("解答を受け付けました！他の人を待ってね。")
+                    st.markdown("<h2>回答を送信しました！</h2>", unsafe_allow_html=True)
                 else:
                     for i, choice in enumerate(choices):
                         target_col = col1 if i % 2 == 0 else col2
@@ -138,31 +231,42 @@ elif st.session_state.current_page == "player":
                             state["current_answers"][nickname] = {"choice": i, "time": time_taken}
                             save_json(STATE_FILE, state)
                             st.rerun()
+                
+                st.markdown(f"<div style='margin-top: 30px; text-align:left;'>🌞 {nickname}</div>", unsafe_allow_html=True)
 
             elif status == "answer":
-                st.info("ホスト画面で正解発表中！")
+                st.markdown("<h1 style='font-size:50px;'>正解</h1>", unsafe_allow_html=True)
+                st.markdown("<h2 style='font-size:80px;'>🙌</h2>", unsafe_allow_html=True)
+                
+                # 自分の獲得ポイントを計算して表示
+                my_ans = state.get("current_answers", {}).get(nickname, {})
+                correct_idx = state.get("correct_idx", -1)
+                
+                if my_ans.get("choice") == correct_idx:
+                    st.markdown("<h2 style='background-color:#333; padding:10px; border-radius:5px;'>+ 獲得ポイント</h2>", unsafe_allow_html=True)
+                    st.markdown("<p>あなたは表彰台に乗っています！</p>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<h1 style='font-size:50px; color:#e21b3c !important;'>不正解...</h1>", unsafe_allow_html=True)
+                    st.markdown("<p>次は頑張ろう！</p>", unsafe_allow_html=True)
                 
             elif status == "leaderboard":
-                score = state.get("players", {}).get(nickname, {}).get("score", 0)
-                st.success(f"現在のあなたのスコア: {score} pt")
+                st.markdown("<h1 style='font-size:40px;'>発表の時間です...</h1>", unsafe_allow_html=True)
+                st.snow()
 
 # ------------------------------------------
-# ② 問題作成画面（複数追加対応）
+# ② 問題作成画面
 # ------------------------------------------
 elif st.session_state.current_page == "maker":
-    st.title("📝 問題セット作成")
+    st.markdown("<h2>📝 問題セット作成</h2>", unsafe_allow_html=True)
     quizzes = load_json(QUIZ_FILE, {})
 
-    # セッションに作成中の問題リストを保持
     if "draft_questions" not in st.session_state:
         st.session_state.draft_questions = [{"q": "", "opts": ["", "", "", ""], "ans": 0, "time": 20}]
 
-    quiz_title = st.text_input("クイズセットのタイトル", "新しいクイズ大会")
-    st.divider()
-
-    # 複数問題の入力フォームをループで生成
+    quiz_title = st.text_input("タイトル", "新しいクイズ大会")
+    
     for i, q in enumerate(st.session_state.draft_questions):
-        st.subheader(f"第 {i + 1} 問")
+        st.markdown(f"<h3>第 {i + 1} 問</h3>", unsafe_allow_html=True)
         q["q"] = st.text_input("問題文", value=q["q"], key=f"q_{i}")
         
         col1, col2 = st.columns(2)
@@ -171,43 +275,40 @@ elif st.session_state.current_page == "maker":
         q["opts"][2] = col1.text_input("選択肢3 (🟨)", value=q["opts"][2], key=f"opt2_{i}")
         q["opts"][3] = col2.text_input("選択肢4 (🟩)", value=q["opts"][3], key=f"opt3_{i}")
         
-        q["ans"] = st.radio("正解はどれ？", [0, 1, 2, 3], format_func=lambda x: f"選択肢{x+1}", horizontal=True, key=f"ans_{i}", index=q["ans"])
+        q["ans"] = st.radio("正解", [0, 1, 2, 3], format_func=lambda x: f"選択肢{x+1}", horizontal=True, key=f"ans_{i}", index=q["ans"])
         q["time"] = st.number_input("制限時間（秒）", min_value=5, value=q["time"], key=f"time_{i}")
         st.divider()
 
-    # コントロールボタン
     col_a, col_b = st.columns(2)
     with col_a:
-        if st.button("＋ 問題をさらに追加する"):
+        if st.button("＋ 問題追加"):
             st.session_state.draft_questions.append({"q": "", "opts": ["", "", "", ""], "ans": 0, "time": 20})
             st.rerun()
-            
     with col_b:
-        if st.button("💾 このセットを保存する", type="primary"):
+        if st.button("💾 保存する", type="primary"):
             quizzes[quiz_title] = st.session_state.draft_questions
             save_json(QUIZ_FILE, quizzes)
-            st.success(f"「{quiz_title}」（全{len(st.session_state.draft_questions)}問）を保存しました！")
-            # リセット
+            st.success("保存しました！")
             st.session_state.draft_questions = [{"q": "", "opts": ["", "", "", ""], "ans": 0, "time": 20}]
 
 # ------------------------------------------
 # ③ ロビー画面（ホスト待機）
 # ------------------------------------------
 elif st.session_state.current_page == "lobby":
-    st.title("🎪 ロビー画面")
+    st.markdown("<h1>Kahoot! ロビー</h1>", unsafe_allow_html=True)
     quizzes = load_json(QUIZ_FILE, {})
     
     if not quizzes:
-        st.error("左のメニューから「問題セット作成」へ行き、クイズを作ってください。")
+        st.error("「問題セット作成」からクイズを作ってください。")
         st.stop()
 
-    quiz_title = st.selectbox("遊ぶクイズセットを選ぶ", list(quizzes.keys()))
+    quiz_title = st.selectbox("遊ぶクイズを選ぶ", list(quizzes.keys()))
 
-    if st.button("ルームを作成（PIN・QR生成）", type="primary"):
-        pin = str(random.randint(1000, 9999))
+    if st.button("ルームを作成", type="primary"):
+        pin = str(random.randint(100, 999)) + " " + str(random.randint(100, 999)) # 本家風に空白を入れる
         
-        # ★ GitHub公開後は、ここを自分のStreamlitアプリのURLに変更してください
-        base_url = "https://quizhistory.streamlit.app/" 
+        # ★ ここはあなたの公開URLに書き換えてください！ ★
+        base_url = "https://あなたのアプリのURL.streamlit.app" 
         join_url = f"{base_url}/?pin={pin}"
         
         qr = qrcode.make(join_url)
@@ -222,21 +323,18 @@ elif st.session_state.current_page == "lobby":
 
     if st.session_state.get("room_created"):
         state = load_json(STATE_FILE, {})
-        col1, col2 = st.columns([1, 1])
         
-        with col1:
-            st.subheader("参加方法")
-            st.write(f"PINコード: **{state.get('pin')}**")
-            st.image("join_qr.png", width=300)
-            
-        with col2:
-            st.subheader(f"参加者 ({len(state.get('players', {}))}人)")
-            st_autorefresh(interval=2000, key="lobby_refresh")
-            for p in state.get("players", {}).keys():
-                st.markdown(f"**🙋 {p}**")
+        st.markdown(f"<h2 style='font-size:50px; background:white; color:black !important; padding:10px; border-radius:10px;'>ゲームのPIN: <br> {state.get('pin')}</h2>", unsafe_allow_html=True)
+        st.image("join_qr.png", width=200)
+        
+        st.markdown(f"<h3>参加者を待っています... ({len(state.get('players', {}))}人)</h3>", unsafe_allow_html=True)
+        st_autorefresh(interval=2000, key="lobby_refresh")
+        
+        # 参加者の名前を横並びで表示
+        players = list(state.get("players", {}).keys())
+        st.markdown("<p style='font-size:24px; font-weight:bold;'>" + " ".join(players) + "</p>", unsafe_allow_html=True)
 
-        st.divider()
-        if st.button("🚀 クイズをスタートする！", type="primary", use_container_width=True):
+        if st.button("🚀 開始", type="primary", use_container_width=True):
             state["status"] = "question"
             save_json(STATE_FILE, state)
             st.session_state.current_page = "host"
@@ -254,21 +352,11 @@ elif st.session_state.current_page == "host":
     quiz_title = state.get("quiz_title")
     q_index = state.get("current_q_index", 0)
     quiz_data = quizzes.get(quiz_title, [])
-    
-    if not quiz_data or status == "lobby":
-        st.error("ロビーに戻ってゲームを開始してください。")
-        st.stop()
 
     current_q = quiz_data[q_index]
 
-    # --- 出題中 ---
     if status == "question":
-        st.title(f"Q{q_index + 1}. {current_q['q']}")
-        col1, col2 = st.columns(2)
-        col1.info(f"🟥 {current_q['opts'][0]}")
-        col2.info(f"🟦 {current_q['opts'][1]}")
-        col1.warning(f"🟨 {current_q['opts'][2]}")
-        col2.success(f"🟩 {current_q['opts'][3]}")
+        st.markdown(f"<h1>{current_q['q']}</h1>", unsafe_allow_html=True)
         
         if "start_time" not in state:
             state["start_time"] = time.time()
@@ -277,25 +365,28 @@ elif st.session_state.current_page == "host":
         elapsed = time.time() - state["start_time"]
         remaining = max(0, current_q['time'] - int(elapsed))
         
-        st.header(f"⏳ 残り時間: {remaining} 秒")
+        st.markdown(f"<h1 style='font-size:80px; background-color:#864cbf; border-radius:50%; width:120px; height:120px; line-height:120px; margin:0 auto;'>{remaining}</h1>", unsafe_allow_html=True)
         
         answers_count = len(state.get("current_answers", {}))
         players_count = len(state.get("players", {}))
-        st.progress(answers_count / max(1, players_count))
-        st.write(f"{answers_count} / {players_count} 人 解答済み")
+        st.markdown(f"<h3 style='text-align:right;'>回答数: {answers_count}</h3>", unsafe_allow_html=True)
+
+        col1, col2 = st.columns(2)
+        col1.error(f"🟥 {current_q['opts'][0]}")
+        col2.info(f"🟦 {current_q['opts'][1]}")
+        col1.warning(f"🟨 {current_q['opts'][2]}")
+        col2.success(f"🟩 {current_q['opts'][3]}")
 
         if remaining == 0 or (answers_count == players_count and players_count > 0):
-            if st.button("解答を締め切って正解発表！", type="primary"):
+            if st.button("次へ（正解発表）", type="primary"):
                 state["status"] = "answer"
+                state["correct_idx"] = current_q['ans']
                 save_json(STATE_FILE, state)
                 st.rerun()
 
-    # --- 正解発表 ---
     elif status == "answer":
-        st.title("正解発表！")
+        st.markdown("<h1>正解発表！</h1>", unsafe_allow_html=True)
         correct_idx = current_q['ans']
-        st.subheader(f"正解は... 「{current_q['opts'][correct_idx]}」でした！")
-        st.balloons()
         
         answers = state.get("current_answers", {})
         counts = [0, 0, 0, 0]
@@ -305,7 +396,7 @@ elif st.session_state.current_page == "host":
         df = pd.DataFrame({"選択肢": current_q['opts'], "投票数": counts})
         st.bar_chart(df.set_index("選択肢"))
         
-        if st.button("ランキングを見る 🏆", type="primary"):
+        if st.button("次へ（ランキング）", type="primary"):
             players = state["players"]
             for p, data in answers.items():
                 if data["choice"] == correct_idx:
@@ -318,16 +409,14 @@ elif st.session_state.current_page == "host":
             save_json(STATE_FILE, state)
             st.rerun()
 
-    # --- ランキング ---
     elif status == "leaderboard":
-        st.title("🏆 中間ランキング")
+        st.markdown("<h1>🏆 表彰台</h1>", unsafe_allow_html=True)
         players = state.get("players", {})
         sorted_players = sorted(players.items(), key=lambda x: x[1]['score'], reverse=True)
         
         for rank, (p, data) in enumerate(sorted_players[:5]):
-            st.header(f"{rank + 1}位: {p} ({data['score']} pt)")
+            st.markdown(f"<h2>{rank + 1}位: {p} - {data['score']} pt</h2>", unsafe_allow_html=True)
             
-        st.divider()
         if q_index + 1 < len(quiz_data):
             if st.button("次の問題へ", type="primary"):
                 state["current_q_index"] += 1
@@ -337,8 +426,7 @@ elif st.session_state.current_page == "host":
                 save_json(STATE_FILE, state)
                 st.rerun()
         else:
-            st.success("🎉 全問終了！お疲れ様でした！")
-            st.balloons()
+            st.markdown("<h1>🎉 全問終了！</h1>", unsafe_allow_html=True)
             if st.button("ロビーに戻る"):
                 st.session_state.current_page = "lobby"
                 st.rerun()
