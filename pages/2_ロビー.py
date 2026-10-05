@@ -16,9 +16,10 @@ quiz_title = st.selectbox("遊ぶクイズを選ぶ", list(quizzes.keys()))
 if st.button("ルームを作成（QR生成）"):
     pin = str(random.randint(1000, 9999))
     
-    # URLの末尾にPINを仕込む（最強の工夫）
-    local_ip = get_local_ip()
-    join_url = f"http://{local_ip}:8501/?pin={pin}"
+    # ★ここを自分のStreamlitアプリの公開URLに書き換える
+    # （デプロイした後に決まるURLを貼り付けます）
+    base_url = "https://your-kahoot-app.streamlit.app" 
+    join_url = f"{base_url}/?pin={pin}"
     
     # QR生成
     qr = qrcode.make(join_url)
