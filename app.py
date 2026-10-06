@@ -179,7 +179,8 @@ elif st.session_state.current_page == "player":
                     st.rerun()
             st.markdown("<p style='font-size:12px; margin-top:20px;'>本名を使用しないでください</p>", unsafe_allow_html=True)
         else:
-            st_autorefresh(interval=1000, key="player_refresh")
+            # ★修正箇所：プレイヤー側の更新スピードを「500ミリ秒」に倍速化
+            st_autorefresh(interval=500, key="player_refresh")
             state = load_json(STATE_FILE, {})
             status = state.get("status", "lobby")
             nickname = st.session_state.nickname
@@ -347,7 +348,8 @@ elif st.session_state.current_page == "lobby":
         </div>
         """, unsafe_allow_html=True)
         
-        st_autorefresh(interval=2000, key="lobby_refresh")
+        # ★修正箇所：ホスト側の更新スピードも「500ミリ秒」に倍速化（参加者の名前が早く表示される）
+        st_autorefresh(interval=500, key="lobby_refresh")
         
         players = list(state.get("players", {}).keys())
         st.markdown("<p style='font-size:28px; font-weight:bold; text-align: center;'>" + "  ".join(players) + "</p>", unsafe_allow_html=True)
@@ -363,7 +365,8 @@ elif st.session_state.current_page == "lobby":
 # ④ クイズ開催画面（ホスト進行）
 # ------------------------------------------
 elif st.session_state.current_page == "host":
-    st_autorefresh(interval=1000, key="host_refresh")
+    # ★修正箇所：ホスト側のクイズ進行の更新スピードも「500ミリ秒」に倍速化
+    st_autorefresh(interval=500, key="host_refresh")
     state = load_json(STATE_FILE, {})
     quizzes = load_json(QUIZ_FILE, {})
     
