@@ -134,6 +134,7 @@ if st.session_state.current_page in ["lobby", "maker", "host"]:
             st.rerun()
         if st.button("📝 問題セット作成", use_container_width=True):
             st.session_state.current_page = "maker"
+            st.session_state.maker_mode = "menu" # 作成画面に戻る時はメニューへ
             st.rerun()
         if st.button("🚪 トップに戻る", use_container_width=True):
             st.session_state.current_page = "home"
@@ -179,7 +180,6 @@ elif st.session_state.current_page == "player":
                     st.rerun()
             st.markdown("<p style='font-size:12px; margin-top:20px;'>本名を使用しないでください</p>", unsafe_allow_html=True)
         else:
-            # ★修正箇所：プレイヤー側の更新スピードを「500ミリ秒」に倍速化
             st_autorefresh(interval=500, key="player_refresh")
             state = load_json(STATE_FILE, {})
             status = state.get("status", "lobby")
@@ -251,42 +251,153 @@ elif st.session_state.current_page == "player":
                 st.snow()
 
 # ------------------------------------------
-# ② 問題作成画面
+# ② 問題作成画面（メニュー・インポート・編集機能追加）
 # ------------------------------------------
 elif st.session_state.current_page == "maker":
-    st.markdown("<h2>📝 問題セット作成</h2>", unsafe_allow_html=True)
-    quizzes = load_json(QUIZ_FILE, {})
+    if "maker_mode" not in st.session_state:
+        st.session_state.maker_mode = "menu"
 
-    if "draft_questions" not in st.session_state:
-        st.session_state.draft_questions = [{"q": "", "opts": ["", "", "", ""], "ans": 0, "time": 20}]
-
-    quiz_title = st.text_input("タイトル", "新しいクイズ大会")
-    
-    for i, q in enumerate(st.session_state.draft_questions):
-        st.markdown(f"<h3>第 {i + 1} 問</h3>", unsafe_allow_html=True)
-        q["q"] = st.text_input("問題文", value=q["q"], key=f"q_{i}")
+    # --- 1. メニュー画面 ---
+    if st.session_state.maker_mode == "menu":
+        st.markdown("<h2>📝 問題セット作成メニュー</h2>", unsafe_allow_html=True)
+        st.write("")
         
-        col1, col2 = st.columns(2)
-        q["opts"][0] = col1.text_input("選択肢1 (🟥)", value=q["opts"][0], key=f"opt0_{i}")
-        q["opts"][1] = col2.text_input("選択肢2 (🟦)", value=q["opts"][1], key=f"opt1_{i}")
-        q["opts"][2] = col1.text_input("選択肢3 (🟨)", value=q["opts"][2], key=f"opt2_{i}")
-        q["opts"][3] = col2.text_input("選択肢4 (🟩)", value=q["opts"][3], key=f"opt3_{i}")
-        
-        q["ans"] = st.radio("正解", [0, 1, 2, 3], format_func=lambda x: f"選択肢{x+1}", horizontal=True, key=f"ans_{i}", index=q["ans"])
-        q["time"] = st.number_input("制限時間（秒）", min_value=5, value=q["time"], key=f"time_{i}")
-        st.divider()
-
-    col_a, col_b = st.columns(2)
-    with col_a:
-        if st.button("＋ 問題追加"):
-            st.session_state.draft_questions.append({"q": "", "opts": ["", "", "", ""], "ans": 0, "time": 20})
-            st.rerun()
-    with col_b:
-        if st.button("💾 保存する", type="primary"):
-            quizzes[quiz_title] = st.session_state.draft_questions
-            save_json(QUIZ_FILE, quizzes)
-            st.success("保存しました！")
+        if st.button("✨ 新しく作成", use_container_width=True):
+            st.session_state.maker_mode = "new"
             st.session_state.draft_questions = [{"q": "", "opts": ["", "", "", ""], "ans": 0, "time": 20}]
+            st.session_state.draft_title = "新しいクイズ大会"
+            st.rerun()
+            
+        st.write("")
+        if st.button("📄 txtファイルから作成", use_container_width=True):
+            st.session_state.maker_mode = "import"
+            st.rerun()
+            
+        st.write("")
+        if st.button("✏️ 作った問題の編集", use_container_width=True):
+            st.session_state.maker_mode = "edit"
+            st.session_state.editing_target = None
+            st.rerun()
+
+    # --- 2. txtファイルから作成（インポート画面） ---
+    elif st.session_state.maker_mode == "import":
+        if st.button("🔙 メニューに戻る", use_container_width=True):
+            st.session_state.maker_mode = "menu"
+            st.rerun()
+            
+        st.markdown("<h2>📄 txtファイルから作成</h2>", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="force-black" style="background: white; padding: 20px; border-radius: 8px; text-align: left; font-size: 14px; margin-bottom: 20px;">
+            <b>【書き方のルール】</b><br>
+            以下の形式で書かれたテキストファイル(.txt)をアップロードしてください。<br><br>
+            <span style="color:#1368ce; font-weight:bold;">【タイトル】俺たちのクイズ大会</span><br><br>
+            <span style="color:#e21b3c; font-weight:bold;">【問題】日本の首都は？</span><br>
+            【1】大阪<br>
+            【2】東京<br>
+            【3】京都<br>
+            【4】福岡<br>
+            <span style="color:#26890c; font-weight:bold;">【正解】2</span><br>
+            <span style="color:#d89e00; font-weight:bold;">【時間】20</span><br><br>
+            <span style="color:#e21b3c; font-weight:bold;">【問題】次の問題の文...</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        uploaded_file = st.file_uploader("txtファイルを選択", type=["txt"])
+        
+        if uploaded_file is not None:
+            text = uploaded_file.read().decode("utf-8")
+            lines = text.split('\n')
+            
+            quiz_title = "インポートされたクイズ"
+            questions = []
+            current_q = None
+            
+            for line in lines:
+                line = line.strip()
+                if line.startswith("【タイトル】"):
+                    quiz_title = line.replace("【タイトル】", "").strip()
+                elif line.startswith("【問題】"):
+                    if current_q: questions.append(current_q)
+                    current_q = {"q": line.replace("【問題】", "").strip(), "opts": ["", "", "", ""], "ans": 0, "time": 20}
+                elif line.startswith("【1】") and current_q: current_q["opts"][0] = line.replace("【1】", "").strip()
+                elif line.startswith("【2】") and current_q: current_q["opts"][1] = line.replace("【2】", "").strip()
+                elif line.startswith("【3】") and current_q: current_q["opts"][2] = line.replace("【3】", "").strip()
+                elif line.startswith("【4】") and current_q: current_q["opts"][3] = line.replace("【4】", "").strip()
+                elif line.startswith("【正解】") and current_q:
+                    ans_str = line.replace("【正解】", "").strip()
+                    current_q["ans"] = (int(ans_str) - 1) if ans_str.isdigit() and 1 <= int(ans_str) <= 4 else 0
+                elif line.startswith("【時間】") and current_q:
+                    time_str = line.replace("【時間】", "").strip()
+                    current_q["time"] = int(time_str) if time_str.isdigit() else 20
+            
+            if current_q:
+                questions.append(current_q)
+                
+            if len(questions) > 0:
+                st.success(f"✅ {len(questions)}問のクイズを読み込みました！")
+                st.write(f"タイトル: {quiz_title}")
+                if st.button("💾 この内容で保存する", type="primary", use_container_width=True):
+                    quizzes = load_json(QUIZ_FILE, {})
+                    quizzes[quiz_title] = questions
+                    save_json(QUIZ_FILE, quizzes)
+                    st.success("保存が完了しました！")
+            else:
+                st.error("問題が見つかりませんでした。書き方のルールを確認してください。")
+
+    # --- 3. 新しく作成 ＆ 編集画面 ---
+    elif st.session_state.maker_mode in ["new", "edit"]:
+        if st.button("🔙 メニューに戻る", use_container_width=True):
+            st.session_state.maker_mode = "menu"
+            st.rerun()
+
+        quizzes = load_json(QUIZ_FILE, {})
+        
+        # 編集モードの場合、プルダウンでクイズを選択させる
+        if st.session_state.maker_mode == "edit":
+            st.markdown("<h2>✏️ 作った問題の編集</h2>", unsafe_allow_html=True)
+            if not quizzes:
+                st.warning("保存されたクイズがありません。")
+                st.stop()
+            else:
+                edit_target = st.selectbox("編集するクイズを選択", ["-- 選択してください --"] + list(quizzes.keys()))
+                if edit_target != "-- 選択してください --":
+                    if st.session_state.get("editing_target") != edit_target:
+                        st.session_state.draft_title = edit_target
+                        st.session_state.draft_questions = quizzes[edit_target]
+                        st.session_state.editing_target = edit_target
+                        st.rerun()
+                else:
+                    st.stop()
+        else:
+            st.markdown("<h2>✨ 新しく作成</h2>", unsafe_allow_html=True)
+
+        # ここからは「新規」も「編集」も同じUI
+        quiz_title = st.text_input("タイトル", st.session_state.get("draft_title", "新しいクイズ大会"))
+        
+        for i, q in enumerate(st.session_state.draft_questions):
+            st.markdown(f"<h3>第 {i + 1} 問</h3>", unsafe_allow_html=True)
+            q["q"] = st.text_input("問題文", value=q["q"], key=f"q_{i}")
+            
+            col1, col2 = st.columns(2)
+            q["opts"][0] = col1.text_input("選択肢1 (🟥)", value=q["opts"][0], key=f"opt0_{i}")
+            q["opts"][1] = col2.text_input("選択肢2 (🟦)", value=q["opts"][1], key=f"opt1_{i}")
+            q["opts"][2] = col1.text_input("選択肢3 (🟨)", value=q["opts"][2], key=f"opt2_{i}")
+            q["opts"][3] = col2.text_input("選択肢4 (🟩)", value=q["opts"][3], key=f"opt3_{i}")
+            
+            q["ans"] = st.radio("正解", [0, 1, 2, 3], format_func=lambda x: f"選択肢{x+1}", horizontal=True, key=f"ans_{i}", index=q["ans"])
+            q["time"] = st.number_input("制限時間（秒）", min_value=5, value=q["time"], key=f"time_{i}")
+            st.divider()
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("＋ 問題追加", use_container_width=True):
+                st.session_state.draft_questions.append({"q": "", "opts": ["", "", "", ""], "ans": 0, "time": 20})
+                st.rerun()
+        with col_b:
+            if st.button("💾 保存する", type="primary", use_container_width=True):
+                quizzes[quiz_title] = st.session_state.draft_questions
+                save_json(QUIZ_FILE, quizzes)
+                st.success(f"「{quiz_title}」を保存しました！")
 
 # ------------------------------------------
 # ③ ロビー画面（ホスト待機）
@@ -348,7 +459,6 @@ elif st.session_state.current_page == "lobby":
         </div>
         """, unsafe_allow_html=True)
         
-        # ★修正箇所：ホスト側の更新スピードも「500ミリ秒」に倍速化（参加者の名前が早く表示される）
         st_autorefresh(interval=500, key="lobby_refresh")
         
         players = list(state.get("players", {}).keys())
@@ -365,7 +475,6 @@ elif st.session_state.current_page == "lobby":
 # ④ クイズ開催画面（ホスト進行）
 # ------------------------------------------
 elif st.session_state.current_page == "host":
-    # ★修正箇所：ホスト側のクイズ進行の更新スピードも「500ミリ秒」に倍速化
     st_autorefresh(interval=500, key="host_refresh")
     state = load_json(STATE_FILE, {})
     quizzes = load_json(QUIZ_FILE, {})
